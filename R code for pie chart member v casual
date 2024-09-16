@@ -1,0 +1,72 @@
+library(dplyr)
+library(ggplot2)
+
+# Replace with your actual file path
+file_path <- ""
+
+data <- read.csv(file_path)
+
+# Filter for casual membership type and create two groups based on ride duration
+filtered_data <- data %>%
+  filter(membership_type == "casual") %>%
+  mutate(ride_duration_group = case_when(
+    Ride_duration_mins >= 0 & Ride_duration_mins <= 30 ~ "Single Ride",
+    Ride_duration_mins > 30 & Ride_duration_mins <= 180 ~ "Day Pass",
+    TRUE ~ "Other"
+  )) %>%
+  filter(ride_duration_group != "Other")
+
+# Count the number of entries in each group
+count_data <- filtered_data %>%
+  count(ride_duration_group)
+
+# Create the bar chart with different colors
+ggplot(count_data, aes(x = ride_duration_group, y = n, fill = ride_duration_group)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Single Ride" = "lightblue", "Day Pass" = "orange")) +
+  labs(title = "Casual Rides by Ride Type", x = "Ride Type", y = "Count")
+
+
+
+
+
+
+day pass vs single ride for all casuals 
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(scales)
+
+# Function to process a single file
+process_file <- function(file_path) {
+  data <- read.csv(file_path)
+  
+  filtered_data <- data %>%
+    filter(membership_type == "casual") %>%
+    mutate(ride_duration_group = case_when(
+      Ride_duration_mins >= 0 & Ride_duration_mins <= 30 ~ "Single Ride",
+      Ride_duration_mins > 30 & Ride_duration_mins <= 180 ~ "Day Pass",
+      TRUE ~ "Other"
+    )) %>%
+    filter(ride_duration_group != "Other")
+  
+  count_data <- filtered_data %>%
+    count(ride_duration_group)
+  
+  return(count_data)
+}
+
+# Get a list of all CSV files in the directory
+file_list <- list.files("", pattern = "*.csv", full.names = TRUE)
+
+# Process each file and combine results
+combined_data <- lapply(file_list, process_file) %>%
+  bind_rows()
+
+# Create the combined bar chart
+ggplot(combined_data, aes(x = ride_duration_group, y = n, fill = ride_duration_group)) +
+  geom_bar(stat = "identity") +
+  scale_fill_manual(values = c("Single Ride" = "lightblue", "Day Pass" = "orange")) +
+  labs(title = "Casual Rides by Ride Type (Combined)", x = "Ride Type", y = "Count") +
+  scale_y_continuous(labels = comma)

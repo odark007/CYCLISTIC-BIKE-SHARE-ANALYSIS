@@ -1,0 +1,59 @@
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tools) # for file_path_sans_ext
+
+# Directory path where all files are stored
+directory_path <- "C:/Users/gofra/Downloads/Capstone data analytics/codes/cleaned/"
+
+# Load and combine data from all CSV files in the directory
+files <- list.files(directory_path, pattern = "*.csv", full.names = TRUE)
+
+# Initialize an empty data frame to store combined data
+combined_data <- data.frame()
+
+# Loop through all files and combine them into one data frame
+for (file in files) {
+  temp_data <- read.csv(file)
+  # Extract the file name without extension as the Start_month
+  temp_data$Start_month <- tools::file_path_sans_ext(basename(file))
+  combined_data <- rbind(combined_data, temp_data)
+}
+
+# Check if the data was loaded successfully
+if (nrow(combined_data) == 0) {
+  stop("No data loaded from the files. Please check your file path and CSV files.")
+}
+
+# Convert End_day to a factor with correct levels (Sunday to Saturday)
+combined_data$End_day <- factor(combined_data$End_day, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+# Define a function to compute the mode
+get_mode <- function(x) {
+  uniq_x <- unique(x)
+  uniq_x[which.max(tabulate(match(x, uniq_x)))]
+}
+
+# Compute the mode of ride durations for each day of the week and membership type
+mode_data <- combined_data %>%
+  group_by(Start_month, End_day, membership_type) %>%
+  summarise(Mode_Ride_Duration = get_mode(Ride_duration_mins), .groups = 'drop')
+
+# Reorder End_day for better visual representation
+mode_data$End_day <- factor(mode_data$End_day, levels = c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"))
+
+# Create a combined bar chart to visualize the mode of ride durations by day of the week and membership type
+ggplot(mode_data, aes(x = End_day, y = Mode_Ride_Duration, fill = membership_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Mode of Ride Duration by Day of the Week and Membership Type (Combined)",
+       x = "Day of the Week",
+       y = "Mode of Ride Duration (minutes)",
+       fill = "Membership Type") +
+  scale_x_discrete(labels = function(x) gsub(" ", "\n", x)) + # Add line breaks to x-axis labels
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), # Angle x-axis labels for readability
+        legend.position = "bottom", # Move legend to the bottom
+        plot.title = element_text(size = 14, face = "bold"), # Title styling
+        axis.title = element_text(size = 12), # Axis title styling
+        legend.title = element_text(size = 12), # Legend title styling
+        legend.text = element_text(size = 10)) # Legend text styling

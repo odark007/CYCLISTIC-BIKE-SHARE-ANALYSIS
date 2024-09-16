@@ -1,0 +1,61 @@
+library(dplyr)
+library(ggplot2)
+
+# Function to process a single file
+process_file <- function(file_path) {
+  data <- read.csv(file_path)
+  
+  # Filter for casual riders and ride duration between 0 and 30 minutes
+  casual_short_rides <- data %>%
+    filter(membership_type == "casual" & Ride_duration_mins >= 0 & Ride_duration_mins <= 30)
+  
+  # Calculate average ride duration and total number of rides for casual short rides
+  avg_duration_short <- mean(casual_short_rides$Ride_duration_mins)
+  total_rides_short <- nrow(casual_short_rides)
+  
+  # Filter for casual riders and ride duration between 31 and 180 minutes
+  casual_long_rides <- data %>%
+    filter(membership_type == "casual" & Ride_duration_mins >= 31 & Ride_duration_mins <= 180)
+  
+  # Calculate average ride duration and total number of rides for casual long rides
+  avg_duration_long <- mean(casual_long_rides$Ride_duration_mins)
+  total_rides_long <- nrow(casual_long_rides)
+  
+  # Filter for members
+  member_data <- data %>%
+    filter(membership_type == "member" & Ride_duration_mins >= 0)
+  
+  # Calculate average ride duration and total number of rides for members
+  avg_duration_member <- mean(member_data$Ride_duration_mins)
+  total_rides_member <- nrow(member_data)
+  
+  # Create a data frame for the bar chart
+  data.frame(
+    file = basename(file_path),
+    Statistic = c("Single Ride", "Day Pass", "Members Ave"),
+    Value = c(avg_duration_short, avg_duration_long, avg_duration_member),
+    TotalRides = c(total_rides_short, total_rides_long, total_rides_member)
+  )
+}
+
+# Get a list of all CSV files in the directory
+file_list <- list.files("C:/Users/gofra/Downloads/Capstone data analytics/codes/cleaned/", pattern = "*.csv", full.names = TRUE)
+
+# Process each file and combine results
+combined_data <- lapply(file_list, process_file) %>%
+  bind_rows()
+
+# Calculate overall averages
+overall_averages <- combined_data %>%
+  group_by(Statistic) %>%
+  summarize(Avg_Value = mean(Value))
+
+# Create the combined bar chart
+ggplot(combined_data, aes(x = Statistic, y = Value, fill = Statistic)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(data = overall_averages, aes(label = round(Avg_Value, 2)), y = 0, vjust = -1, size = 3) +
+  labs(title = "Average Ride Duration",
+       x = NULL,
+       y = "Duration (mins)") +
+  scale_fill_manual(values = c("Single Ride" = "skyblue", "Day Pass" = "lightgreen", "Members Ave" = "steelblue")) +
+  theme_minimal()

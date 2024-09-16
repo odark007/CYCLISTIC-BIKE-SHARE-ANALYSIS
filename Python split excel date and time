@@ -1,0 +1,49 @@
+import pandas as pd
+
+# File path
+file_path = 'enter directory'
+
+# Load the CSV file into a DataFrame
+df = pd.read_csv(file_path)
+
+# Print columns to verify their names
+print("Columns in the DataFrame:")
+print(df.columns)
+
+# Extract the first part of the string in column B and create a new column
+try:
+    # Assuming column B is the second column
+    df['rideable_type_new'] = df.iloc[:, 1].apply(lambda x: str(x).split('_')[0])
+except Exception as e:
+    print(f"Error processing column B: {e}")
+
+# Split the timestamp in column C into 'Date' and 'Time'
+try:
+    timestamp_column_start = df.columns[2]  # Assuming column C is the third column
+    df[['Date', 'Time']] = df[timestamp_column_start].str.split(' ', expand=True)
+except Exception as e:
+    print(f"Error processing column C: {e}")
+
+# Split the timestamp in column D into 'end_Date' and 'end_Time'
+try:
+    timestamp_column_end = df.columns[3]  # Assuming column D is the fourth column
+    df[['end_Date', 'end_Time']] = df[timestamp_column_end].str.split(' ', expand=True)
+except Exception as e:
+    print(f"Error processing column D: {e}")
+
+# Reorder columns if necessary, placing 'Date', 'Time', 'end_Date', 'end_Time' at the beginning
+try:
+    df = df[['Date', 'Time', 'end_Date', 'end_Time', 'rideable_type_new'] + 
+            [col for col in df.columns if col not in ['Date', 'Time', 'end_Date', 'end_Time', 'rideable_type_new']]]
+except Exception as e:
+    print(f"Error reordering columns: {e}")
+
+# Define the output file path
+output_file_path = 'C:/Users/gofra/Downloads/Capstone data analytics/codes/202211-divvy-tripdata_combined.csv'
+
+# Save the updated DataFrame to a new CSV file
+try:
+    df.to_csv(output_file_path, index=False)
+    print("New column added and timestamps successfully split. File saved!")
+except Exception as e:
+    print(f"Error saving file: {e}")

@@ -1,0 +1,58 @@
+# same day check and time duration
+
+import pandas as pd
+import numpy as np
+
+# File path
+file_path = 'C:/Users/gofra/Downloads/Capstone data analytics/codes/202211-divvy-tripdata_combined.csv'
+
+# Load the CSV file into a DataFrame
+df = pd.read_csv(file_path)
+
+# Display the first few rows to ensure it's loaded correctly
+print("Initial DataFrame preview:")
+print(df.head())
+
+# Check for missing values in the relevant columns
+print("\nMissing values in 'start_day', 'end_day', 'Time', and 'end_Time':")
+print(df[['start_day', 'end_day', 'Time', 'end_Time']].isna().sum())
+
+# Define a function to check if 'start_day' and 'end_day' are the same
+def check_day_equality(start, end):
+    if pd.notna(start) and pd.notna(end):
+        return start == end
+    return False
+
+# Apply the function and create a new column 'day_check' to indicate if the days are the same
+df['day_check'] = df.apply(lambda row: check_day_equality(row['start_day'], row['end_day']), axis=1)
+
+# Convert the columns to datetime.time format for time difference calculation
+df['Time'] = pd.to_datetime(df['Time'], format='%H:%M:%S').dt.time
+df['end_Time'] = pd.to_datetime(df['end_Time'], format='%H:%M:%S').dt.time
+
+# Function to calculate the time difference in minutes
+def calculate_time_difference(start_time, end_time):
+    if pd.notna(start_time) and pd.notna(end_time):
+        start_dt = pd.Timestamp.combine(pd.Timestamp.today(), start_time)
+        end_dt = pd.Timestamp.combine(pd.Timestamp.today(), end_time)
+        
+        # If end time is before start time, assume end_time is on the next day
+        if end_dt < start_dt:
+            end_dt += pd.DateOffset(days=1)
+        
+        # Calculate the difference in minutes
+        duration = (end_dt - start_dt).total_seconds() / 60
+        return np.round(duration)  # Return the rounded difference in minutes
+    
+    return np.nan  # Return NaN if either time is not valid
+
+# Apply the function and store the results in a new column 'time_difference'
+df['time_difference'] = df.apply(lambda row: calculate_time_difference(row['Time'], row['end_Time']), axis=1)
+
+# Define the output file path
+output_file_path = 'C:/Users/gofra/Downloads/Capstone data analytics/codes/202211-divvy-tripdata_with_day_check_and_time_difference.csv'
+
+# Save the updated DataFrame to a new CSV file
+df.to_csv(output_file_path, index=False)
+
+print("Day check and time difference calculation completed and saved to columns 'day_check' and 'time_difference'!")

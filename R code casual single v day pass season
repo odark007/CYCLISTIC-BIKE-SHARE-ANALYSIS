@@ -1,0 +1,87 @@
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Directory path where all files are stored
+directory_path <- "C:/Users/gofra/Downloads/Capstone data analytics/codes/cleaned/"
+
+# Load the data from all CSV files in the directory
+files <- list.files(directory_path, pattern = "*.csv", full.names = TRUE)
+
+# Initialize an empty data frame to store combined data
+combined_data <- data.frame()
+
+# Loop through all files and combine them into one data frame
+for (file in files) {
+  temp_data <- read.csv(file)
+  combined_data <- rbind(combined_data, temp_data)
+}
+
+# Check if the data was loaded successfully
+if (nrow(combined_data) == 0) {
+  stop("No data loaded from the files. Please check your file path and CSV files.")
+}
+
+# Filter for casual riders
+casual_data <- combined_data %>% 
+  filter(membership_type == "casual")
+
+# Filter for ride durations 30 minutes or less and greater than 30 minutes
+casual_data <- casual_data %>%
+  mutate(ride_duration_category = ifelse(Ride_duration_mins <= 30, 
+                                         "30 minutes or less", 
+                                         "Greater than 30 minutes"))
+
+# Check if Start_month column exists and contains valid data
+if (!"Start_month" %in% colnames(casual_data)) {
+  stop("The 'Start_month' column is missing. Please check the dataset.")
+}
+
+# Add a Season column based on the Start_month
+casual_data <- casual_data %>%
+  mutate(Season = case_when(
+    Start_month %in% c("December", "January", "February", "March") ~ "Winter",
+    Start_month %in% c("April", "May", "June") ~ "Spring",
+    Start_month %in% c("July", "August") ~ "Summer",
+    Start_month %in% c("September", "October", "November") ~ "Fall"
+  ))
+
+# Group and summarize the data by Start_month, Season, and ride duration category
+summary_data <- casual_data %>%
+  group_by(Season, Start_month, ride_duration_category) %>%
+  summarise(Ride_Count = n()) %>%
+  ungroup()
+
+# Calculate the maximum ride count
+max_ride_count <- max(summary_data$Ride_Count)
+
+# Normalize the ride counts by dividing by the maximum value
+summary_data <- summary_data %>%
+  mutate(Ride_Count_Normalized = Ride_Count / max_ride_count)
+
+# Reorder Start_month to ensure correct chronological order for x-axis
+summary_data$Start_month <- factor(summary_data$Start_month, 
+                                   levels = c("December", "January", "February", "March",
+                                              "April", "May", "June", 
+                                              "July", "August", 
+                                              "September", "October", "November"))
+
+# Reorder the Season to ensure it's ordered correctly
+summary_data$Season <- factor(summary_data$Season, 
+                              levels = c("Winter", "Spring", "Summer", "Fall"))
+
+# Create a combined bar chart to visualize normalized ride durations for casual riders
+ggplot(summary_data, aes(x = Start_month, y = Ride_Count_Normalized, fill = ride_duration_category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1), # Display as percentages
+                     breaks = seq(0, 1, by = 0.1),  # Breaks from 0 to 1 in steps of 0.1
+                     limits = c(0, 1)) +
+  labs(title = "Normalized Ride Duration for Casual Riders by Month and Season",
+       x = "Month",
+       y = "Proportion of Maximum Rides",
+       fill = "Ride Duration") +
+  facet_wrap(~ Season, nrow = 1, scales = "free_x") + # Ensure all seasons are in one row
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), # Angle x-axis labels for readability
+        strip.text.x = element_text(size = 12, face = "bold"), # Style for season labels
+        panel.spacing = unit(1, "lines")) # Adjust spacing between facets
